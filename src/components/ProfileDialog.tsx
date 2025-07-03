@@ -49,7 +49,12 @@ export default function ProfileDialog({
       const canvas = document.createElement('canvas');
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
-      canvas.getContext('2d')?.drawImage(video, 0, 0);
+      const ctx = canvas.getContext('2d');
+        if (ctx) {
+        ctx.translate(canvas.width, 0);       // Move to the right edge
+        ctx.scale(-1, 1);                     // Flip horizontally
+        ctx.drawImage(video, 0, 0);           // Draw mirrored video frame
+}
 
       canvas.toBlob((blob) => {
         if (blob) {
