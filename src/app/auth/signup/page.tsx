@@ -11,6 +11,7 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { GoogleOAuthButton } from '@/components/GoogleOAuthButton';
 import { signIn } from 'next-auth/react';
+import ProfileDialog from '@/components/ProfileDialog'; // adjust if needed
 const formSchema = z
   .object({
     email: z.string().email(),
@@ -25,6 +26,9 @@ const formSchema = z
 export default function SignUpPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [userEmail, setUserEmail] = useState('');
+
   const {
     register,
     handleSubmit,
@@ -39,8 +43,10 @@ export default function SignUpPage() {
     });
 
     if (res?.ok){
-      router.push('/dashboard');
-      console.log('Authentication successful:', res);
+      setUserEmail(data.email);
+      setOpen(true)
+      // router.push('/dashboard');
+      // console.log('Authentication successful:', res);
     } 
     else console.log('Authentication failed:', res?.error);
     // else alert('Authentication failed');
@@ -58,7 +64,7 @@ export default function SignUpPage() {
         }),
       });
       onSubmitToSignIn(data)
-      router.push('/auth/signin');
+      // router.push('/auth/signin');
     } catch (err) {
       console.error('Signup failed', err);
     }
@@ -124,6 +130,7 @@ export default function SignUpPage() {
       </div>
 
       {/* Right Panel - Video Background */}
+      {open && <ProfileDialog email={userEmail} onClose={() => setOpen(false)} />}
       <div className="w-1/2 h-full overflow-hidden">
         <video
           className="object-cover w-full h-full"
