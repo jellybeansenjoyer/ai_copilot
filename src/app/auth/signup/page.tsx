@@ -10,7 +10,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { GoogleOAuthButton } from '@/components/GoogleOAuthButton';
-
+import { signIn } from 'next-auth/react';
 const formSchema = z
   .object({
     email: z.string().email(),
@@ -21,7 +21,7 @@ const formSchema = z
     message: 'Passwords do not match',
     path: ['confirmPassword'],
   });
-
+    
 export default function SignUpPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -32,11 +32,24 @@ export default function SignUpPage() {
   } = useForm({
     resolver: zodResolver(formSchema),
   });
+  const onSubmitToSignIn = async (data: any) => {
+    const res = await signIn('credentials', {
+      redirect: false,
+      ...data,
+    });
 
+    if (res?.ok){
+      router.push('/dashboard');
+      console.log('Authentication successful:', res);
+    } 
+    else console.log('Authentication failed:', res?.error);
+    // else alert('Authentication failed');
+
+  };
   const onSubmit = async (data: any) => {
     setLoading(true);
     try {
-      await fetch(`${process.env.API_BASE_URL}/auth/signup`, {
+      await fetch(`http://localhost:2999/auth/signup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -44,6 +57,7 @@ export default function SignUpPage() {
           password: data.password,
         }),
       });
+      onSubmitToSignIn(data)
       router.push('/auth/signin');
     } catch (err) {
       console.error('Signup failed', err);
