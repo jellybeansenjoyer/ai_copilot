@@ -8,6 +8,10 @@ interface UserProfile {
   id: string;
   email: string;
   quota: number;
+  provider: string | null; 
+  name: string | null;
+  picture: string | null;
+
 }
 
 interface AuthContextProps {
@@ -26,20 +30,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const router = useRouter();
 
   useEffect(() => {
+    console.log("session in AuthContext:", session);
+    console.log("accessToken:", session?.accessToken);
+
     if (status === 'loading') return;
     if (!session?.accessToken) {
       setLoading(false);
       return;
     }
-
-    fetch('http://localhost:3000/user/profile', {
+    fetch('http://localhost:2999/user/profile', {
       headers: {
         Authorization: `Bearer ${session.accessToken}`,
       },
     })
       .then(res => res.json())
       .then(setUser)
-      .catch(() => setUser(null))
+      .catch(()=>{setUser(null)})
       .finally(() => setLoading(false));
   }, [session, status]);
 

@@ -8,6 +8,7 @@ export default function DashboardPage() {
   const router = useRouter();
 
   useEffect(() => {
+    console.log('DashboardPage user:', user);
     if (!loading && !user) router.push('/auth/signin');
   }, [loading, user, router]);
 
@@ -22,3 +23,20 @@ export default function DashboardPage() {
     </div>
   );
 }
+// 'use client';
+
+// import { useSession } from 'next-auth/react';
+// import { useRouter } from 'next/navigation';
+
+// export default function DashboardPage() {
+//   const { data: session, status } = useSession();
+//   const router = useRouter();
+//     console.log(`${JSON.stringify(session)} ${status} asd`);
+//   if (status === 'unauthenticated') router.push('/auth/signin');
+
+//   return (
+//     <div>
+//       Welcome {session?.user?.email}
+//     </div>
+//   );
+// }
