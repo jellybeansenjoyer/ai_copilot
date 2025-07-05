@@ -3,23 +3,27 @@
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
-import { Menu, ArrowRight, ArrowLeftRight } from 'lucide-react';
+import { Menu, Loader2, Copy } from 'lucide-react';
 import Image from 'next/image';
 import { getSession } from 'next-auth/react';
-import DiffViewer from 'react-diff-viewer';
+import { diffLines } from 'diff';
+import dynamic from 'next/dynamic';
 
-export default function DashboardPage() {
+const ProfileDialog = dynamic(() => import('@/components/ProfileDialog'), { ssr: false });
+
+export default function DiffCheckerPage() {
   const { user, loading, signOut } = useAuth();
   const router = useRouter();
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [mode, setMode] = useState<'chat' | 'diff'>('chat');
-
-  const [code, setCode] = useState('');
+  const [originalCode, setOriginalCode] = useState('');
   const [requirements, setRequirements] = useState('');
-  const [output, setOutput] = useState('');
-  const [visibleOutput, setVisibleOutput] = useState('');
-  const [submitted, setSubmitted] = useState(false);
+  const [updatedCode, setUpdatedCode] = useState('');
+  const [diffOutput, setDiffOutput] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [showProfileDialog, setShowProfileDialog] = useState(false);
+  const [updatedPicture, setUpdatedPicture] = useState<string>('');
+  const [sessionHistory, setSessionHistory] = useState<any[]>([]);
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const mainRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -28,7 +32,11 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (drawerOpen && mainRef.current && !mainRef.current.contains(event.target as Node)) {
+      if (
+        drawerOpen &&
+        mainRef.current &&
+        !mainRef.current.contains(event.target as Node)
+      ) {
         setDrawerOpen(false);
       }
     };
@@ -37,61 +45,38 @@ export default function DashboardPage() {
   }, [drawerOpen]);
 
   useEffect(() => {
-    if (!output) return;
-    setVisibleOutput('');
-    let index = 0;
-    const interval = setInterval(() => {
-      setVisibleOutput((prev) => prev + output.charAt(index));
-      index++;
-      if (index >= output.length) clearInterval(interval);
-    }, 10);
-    return () => clearInterval(interval);
-  }, [output]);
-
-  if (loading) return <p>Loading...</p>;
-  if (!user) return null;
-
-  const handleChatSubmit = async () => {
-    if (!code.trim()) return;
-
-    try {
-      setIsLoading(true);
-      setSubmitted(true);
-      setOutput('');
-      setVisibleOutput('');
-
+    const fetchSessions = async () => {
       const session = await getSession();
-      if (!session?.accessToken) {
-        alert('Session expired or unauthorized');
-        return;
-      }
-
-      const res = await fetch('http://localhost:2999/sessions', {
-        method: 'POST',
+      if (!session?.accessToken) return;
+  
+      const res = await fetch('http://localhost:2999/sessions/history', {
         headers: {
-          'Content-Type': 'application/json',
           Authorization: `Bearer ${session.accessToken}`,
         },
-        body: JSON.stringify({ code }),
       });
-
+  
       const data = await res.json();
-      setOutput(data.codeOutput || 'No output returned.');
-    } catch (error) {
-      setOutput('Error fetching response.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
+  
+      // ✅ Ensure data is an array
+      if (Array.isArray(data)) {
+        setSessionHistory(data);
+      } else {
+        console.error('Expected array but got:', data);
+        setSessionHistory([]); // fallback to empty array
+      }
+    };
+  
+    if (user) fetchSessions();
+  }, [user]);
+  
   const handleDiffSubmit = async () => {
-    if (!code.trim() || !requirements.trim()) return;
+    if (!originalCode.trim() || !requirements.trim()) return;
+
+    setIsLoading(true);
+    setUpdatedCode('');
+    setDiffOutput([]);
 
     try {
-      setIsLoading(true);
-      setSubmitted(true);
-      setOutput('');
-
       const session = await getSession();
       if (!session?.accessToken) {
         alert('Session expired or unauthorized');
@@ -104,27 +89,27 @@ export default function DashboardPage() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${session.accessToken}`,
         },
-        body: JSON.stringify({ code, requirements }),
+        body: JSON.stringify({ code: originalCode, requirements }),
       });
 
       const data = await res.json();
-      const cleaned = data.updatedCode.replace(/```[\s\S]*?```/, (match: string) =>
-        match.replace(/```[a-z]*\n?/gi, '').replace(/```$/, '').trim()
-      );
-      setOutput(cleaned);
+      const cleanCode = data.updatedCode.replace(/```(\w+)?/g, '').trim();
+      setUpdatedCode(cleanCode);
+      setDiffOutput(diffLines(originalCode, cleanCode));
     } catch (error) {
-      setOutput('Error generating diff.');
+      alert('Failed to fetch diff.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const toggleMode = () => {
-    setMode(mode === 'chat' ? 'diff' : 'chat');
-    setSubmitted(false);
-    setOutput('');
-    setCode('');
-    setRequirements('');
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+  };
+
+  const handleProfileClose = () => {
+    setShowProfileDialog(false);
+    if (user?.picture) setUpdatedPicture(user.picture);
   };
 
   return (
@@ -140,37 +125,54 @@ export default function DashboardPage() {
       </video>
       <div className="absolute top-0 left-0 w-full h-full bg-white/40 z-0 pointer-events-none" />
 
-      {/* Drawer */}
       <div
-        className={`fixed top-0 left-0 h-full w-64 bg-white text-black z-30 transform ${drawerOpen ? 'translate-x-0' : '-translate-x-full'} transition-transform duration-300 ease-in-out shadow-lg`}
+        className={`fixed top-0 left-0 h-full w-64 bg-white text-black z-30 transform ${
+          drawerOpen ? 'translate-x-0' : '-translate-x-full'
+        } transition-transform duration-300 ease-in-out shadow-lg`}
       >
-        <div className="p-4 font-bold text-xl border-b">Past Sessions</div>
+        <div className="p-4 font-bold text-xl border-b">Diff Sessions</div>
+        <div className="p-4 space-y-2 overflow-y-auto h-[calc(100%-3rem)]">
+          {sessionHistory.map((s) => (
+            <div
+              key={s.id}
+              onClick={() => {
+                setOriginalCode(s.codeInput);
+                setUpdatedCode(s.codeOutput);
+                setDiffOutput(diffLines(s.codeInput, s.codeOutput));
+                setSelectedSessionId(s.id);
+              }}
+              className={`p-3 rounded-lg cursor-pointer border transition transform duration-200 hover:scale-105 ${
+                selectedSessionId === s.id ? 'bg-blue-100 border-blue-400' : 'bg-white'
+              }`}
+            >
+              <div className="font-semibold text-sm truncate">{s.codeInput.slice(0, 40)}...</div>
+              <div className="text-xs text-gray-500">{new Date(s.createdAt).toLocaleString()}</div>
+            </div>
+          ))}
+        </div>
       </div>
 
-      {/* Main */}
       <div className="relative z-20 h-full flex flex-col" ref={mainRef}>
-        {/* Header */}
         <div className="flex justify-between items-center px-6 py-4">
           <div className="flex items-center space-x-4">
             <Menu className="cursor-pointer" onClick={() => setDrawerOpen(!drawerOpen)} />
-            <h1 className="text-2xl font-bold">Reimage</h1>
+            <h1 className="text-2xl font-bold">Reimage Diff</h1>
           </div>
+
           <div className="flex items-center space-x-4">
-            <button onClick={toggleMode} className="bg-gray-200 px-3 py-1 rounded-full text-sm flex items-center">
-              <ArrowLeftRight className="w-4 h-4 mr-2" /> Switch to {mode === 'chat' ? 'Diff' : 'Chat'}
-            </button>
             <div
-              onClick={() => router.push('/profile')}
+              onClick={() => setShowProfileDialog(true)}
               className="cursor-pointer ring-2 ring-blue-500 rounded-full p-0.5 transition-transform hover:scale-105"
             >
               <Image
-                src={user.picture || '/default-avatar.png'}
+                src={updatedPicture || user?.picture || '/default-avatar.png'}
                 alt="Profile"
                 width={40}
                 height={40}
                 className="rounded-full object-cover"
               />
             </div>
+
             <button
               onClick={signOut}
               className="text-sm px-4 py-2 border border-white text-red-600 rounded hover:bg-red-600 hover:text-white transition-colors"
@@ -180,68 +182,74 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Hero */}
-        {!submitted && (
-          <div className="flex flex-col items-center text-center px-4 mt-10 mb-8">
-            <h2 className="text-4xl md:text-6xl font-extrabold mb-4">{mode === 'chat' ? 'What would you like to do today?' : 'Code Diff Viewer'}</h2>
-            <p className="text-lg md:text-xl mb-4 max-w-2xl">
-              {mode === 'chat' ? 'Effective Enhanced Prompts that you can use as much as you want' : 'Compare your code with smart edits.'}
-            </p>
-          </div>
+        {showProfileDialog && user?.email && (
+          <ProfileDialog email={user.email} onClose={handleProfileClose} />
         )}
 
-        {/* Input Section */}
-        <div className="px-6 pb-6 w-full flex flex-col items-center gap-4">
-          <textarea
-            rows={4}
-            placeholder="Your code here..."
-            value={code}
-            onChange={(e) => setCode(e.target.value)}
-            className="w-full max-w-3xl px-6 py-4 text-lg bg-white/80 text-black placeholder:text-gray-500 focus:outline-none border border-gray-300 rounded-md resize-none"
-          />
+        <div className="flex-1 overflow-auto px-6 pb-6 flex flex-col gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-white/80 p-4 rounded-md border relative">
+              <label className="block text-sm font-medium mb-1">Original Code</label>
+              <textarea
+                rows={10}
+                value={originalCode}
+                onChange={(e) => setOriginalCode(e.target.value)}
+                className="w-full p-3 text-sm font-mono bg-gray-100 rounded-md border"
+              />
+              <button
+                onClick={() => copyToClipboard(originalCode)}
+                className="absolute top-2 right-2 text-xs flex items-center gap-1 bg-white border p-1 rounded hover:bg-gray-200"
+              >
+                <Copy size={14} /> Copy
+              </button>
+            </div>
 
-          {mode === 'diff' && (
-            <textarea
-              rows={2}
-              placeholder="Change requirements (e.g. rename variable, add return)"
-              value={requirements}
-              onChange={(e) => setRequirements(e.target.value)}
-              className="w-full max-w-3xl px-6 py-3 text-base bg-white/80 text-black placeholder:text-gray-500 focus:outline-none border border-gray-300 rounded-md resize-none"
-            />
-          )}
+            <div className="bg-white/80 p-4 rounded-md border relative">
+              <label className="block text-sm font-medium mb-1">Change Requirements</label>
+              <textarea
+                rows={10}
+                value={requirements}
+                onChange={(e) => setRequirements(e.target.value)}
+                className="w-full p-3 text-sm bg-gray-100 rounded-md border"
+              />
+            </div>
+          </div>
 
           <button
-            onClick={mode === 'chat' ? handleChatSubmit : handleDiffSubmit}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-full disabled:opacity-50"
+            onClick={handleDiffSubmit}
             disabled={isLoading}
+            className="self-center bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md mt-4 disabled:opacity-50"
           >
-            {isLoading ? 'Processing...' : mode === 'chat' ? 'Submit Prompt' : 'Generate Diff'}
+            {isLoading ? <Loader2 className="animate-spin" /> : 'Generate Diff'}
           </button>
-        </div>
 
-        {/* Output Section */}
-        {submitted && output && (
-          <div className="flex-1 overflow-auto px-6 pb-6 flex flex-col items-center">
-            {mode === 'chat' ? (
-              <div className="w-full max-w-3xl space-y-4">
-                <div className="flex justify-end">
-                  <div className="bg-blue-100 p-4 rounded-md font-mono text-sm whitespace-pre-wrap">
-                    {code}
-                  </div>
-                </div>
-                <div className="flex justify-start">
-                  <div className="bg-gray-200 p-4 rounded-md text-sm whitespace-pre-wrap">
-                    {visibleOutput}
-                  </div>
-                </div>
+          {diffOutput.length > 0 && (
+            <div className="mt-6 bg-white/90 rounded-md border p-4 relative">
+              <div className="flex justify-between items-center mb-2">
+                <h3 className="font-bold text-lg">Updated Code with Diff</h3>
+                <button
+                  onClick={() => copyToClipboard(updatedCode)}
+                  className="text-xs flex items-center gap-1 bg-white border p-1 rounded hover:bg-gray-200"
+                >
+                  <Copy size={14} /> Copy Updated
+                </button>
               </div>
-            ) : (
-              <div className="w-full max-w-5xl">
-                <DiffViewer oldValue={code} newValue={output} splitView={true} />
-              </div>
-            )}
-          </div>
-        )}
+              <pre className="whitespace-pre-wrap font-mono text-sm">
+                {diffOutput.map((part, index) => (
+                  <span
+                    key={index}
+                    className={`block px-1 rounded ${
+                      part.added ? 'bg-green-100' :
+                      part.removed ? 'bg-red-100' :
+                      ''}`}
+                  >
+                    {part.value}
+                  </span>
+                ))}
+              </pre>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
