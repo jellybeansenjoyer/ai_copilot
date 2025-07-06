@@ -26,7 +26,7 @@ export function AuthForm({ mode }: { mode: 'signin' | 'signup' }) {
     setLoading(true);
     console.log('Submitting data:', mode);
     if (mode === 'signup') {
-      const res = await fetch(`http://localhost:2999/auth/signup`, {
+      const res = await fetch(`https://ai-copilot-backend.onrender.com/sessions/auth/signup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
