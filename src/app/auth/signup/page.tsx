@@ -10,7 +10,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { GoogleOAuthButton } from '@/components/GoogleOAuthButton';
-
+import { signIn } from 'next-auth/react';
+import ProfileDialog from '@/components/ProfileDialog'; // adjust if needed
 const formSchema = z
   .object({
     email: z.string().email(),
@@ -21,10 +22,13 @@ const formSchema = z
     message: 'Passwords do not match',
     path: ['confirmPassword'],
   });
-
+    
 export default function SignUpPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [userEmail, setUserEmail] = useState('');
+
   const {
     register,
     handleSubmit,
@@ -32,11 +36,26 @@ export default function SignUpPage() {
   } = useForm({
     resolver: zodResolver(formSchema),
   });
+  const onSubmitToSignIn = async (data: any) => {
+    const res = await signIn('credentials', {
+      redirect: false,
+      ...data,
+    });
 
+    if (res?.ok){
+      setUserEmail(data.email);
+      setOpen(true)
+      // router.push('/dashboard');
+      // console.log('Authentication successful:', res);
+    } 
+    else console.log('Authentication failed:', res?.error);
+    // else alert('Authentication failed');
+
+  };
   const onSubmit = async (data: any) => {
     setLoading(true);
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/signup`, {
+      await fetch(`http://localhost:2999/auth/signup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -44,7 +63,8 @@ export default function SignUpPage() {
           password: data.password,
         }),
       });
-      router.push('/auth/signin');
+      onSubmitToSignIn(data)
+      // router.push('/auth/signin');
     } catch (err) {
       console.error('Signup failed', err);
     }
@@ -110,6 +130,7 @@ export default function SignUpPage() {
       </div>
 
       {/* Right Panel - Video Background */}
+      {open && <ProfileDialog email={userEmail} onClose={() => setOpen(false)} />}
       <div className="w-1/2 h-full overflow-hidden">
         <video
           className="object-cover w-full h-full"

@@ -33,8 +33,12 @@ export default function SignInPage() {
       ...data,
     });
 
-    if (res?.ok) router.push('/dashboard');
-    else alert('Authentication failed');
+    if (res?.ok){
+      router.push('/dashboard');
+      console.log('Authentication successful:', res);
+    } 
+    else console.log('Authentication failed:', res?.error);
+    // else alert('Authentication failed');
 
     setLoading(false);
   };
