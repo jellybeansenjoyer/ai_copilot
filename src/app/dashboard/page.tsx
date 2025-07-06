@@ -48,27 +48,26 @@ export default function DiffCheckerPage() {
     const fetchSessions = async () => {
       const session = await getSession();
       if (!session?.accessToken) return;
-  
+
       const res = await fetch('http://localhost:2999/sessions/history', {
         headers: {
           Authorization: `Bearer ${session.accessToken}`,
         },
       });
-  
+
       const data = await res.json();
-  
-      // ✅ Ensure data is an array
+
       if (Array.isArray(data)) {
         setSessionHistory(data);
       } else {
         console.error('Expected array but got:', data);
-        setSessionHistory([]); // fallback to empty array
+        setSessionHistory([]);
       }
     };
-  
+
     if (user) fetchSessions();
   }, [user]);
-  
+
   const handleDiffSubmit = async () => {
     if (!originalCode.trim() || !requirements.trim()) return;
 
@@ -80,6 +79,22 @@ export default function DiffCheckerPage() {
       const session = await getSession();
       if (!session?.accessToken) {
         alert('Session expired or unauthorized');
+        return;
+      }
+
+      const quotaRes = await fetch('http://localhost:2999/user/profile', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.accessToken}`,
+        },
+        body: JSON.stringify({ quota: -1000 }),
+      });
+
+      const updatedUser = await quotaRes.json();
+
+      if (updatedUser.quota <= 0) {
+        alert('Please recharge, you have exhausted your daily quota.');
         return;
       }
 
@@ -96,8 +111,8 @@ export default function DiffCheckerPage() {
       const cleanCode = data.updatedCode.replace(/```(\w+)?/g, '').trim();
       setUpdatedCode(cleanCode);
       setDiffOutput(diffLines(originalCode, cleanCode));
-    } catch (error) {
-      alert('Failed to fetch diff.');
+    } catch (error: any) {
+      alert(error.message.includes('quota') ? 'Insufficient quota. Please recharge.' : 'Failed to fetch diff.');
     } finally {
       setIsLoading(false);
     }
