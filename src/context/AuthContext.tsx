@@ -38,7 +38,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setLoading(false);
       return;
     }
-    fetch('https://ai-copilot-backend.onrender.com/sessions/user/profile', {
+    fetch('https://ai-copilot-backend.onrender.com/user/profile', {
       headers: {
         Authorization: `Bearer ${session.accessToken}`,
       },

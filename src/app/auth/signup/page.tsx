@@ -55,7 +55,7 @@ export default function SignUpPage() {
   const onSubmit = async (data: any) => {
     setLoading(true);
     try {
-      await fetch(`https://ai-copilot-backend.onrender.com/sessions/auth/signup`, {
+      await fetch(`https://ai-copilot-backend.onrender.com/auth/signup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

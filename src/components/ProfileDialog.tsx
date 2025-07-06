@@ -98,7 +98,7 @@ export default function ProfileDialog({
       return;
     }
 
-    await fetch('https://ai-copilot-backend.onrender.com/sessions/user/profile', {
+    await fetch('https://ai-copilot-backend.onrender.com/user/profile', {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',

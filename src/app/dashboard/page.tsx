@@ -49,7 +49,7 @@ export default function DiffCheckerPage() {
       const session = await getSession();
       if (!session?.accessToken) return;
 
-      const res = await fetch('https://ai-copilot-backend.onrender.com/sessions/sessions/history', {
+      const res = await fetch('https://ai-copilot-backend.onrender.com/sessions/history', {
         headers: {
           Authorization: `Bearer ${session.accessToken}`,
         },
@@ -82,7 +82,7 @@ export default function DiffCheckerPage() {
         return;
       }
 
-      const quotaRes = await fetch('https://ai-copilot-backend.onrender.com/sessions/user/profile', {
+      const quotaRes = await fetch('https://ai-copilot-backend.onrender.com/user/profile', {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -98,7 +98,7 @@ export default function DiffCheckerPage() {
         return;
       }
 
-      const res = await fetch('https://ai-copilot-backend.onrender.com/sessions/sessions/diff', {
+      const res = await fetch('https://ai-copilot-backend.onrender.com/sessions/diff', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

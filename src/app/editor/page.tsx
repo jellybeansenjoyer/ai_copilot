@@ -12,7 +12,7 @@ export default function DiffCheckerPage() {
 
   const handleDiffSubmit = async () => {
     setLoading(true);
-    const res = await fetch('https://ai-copilot-backend.onrender.com/sessions/sessions/diff', {
+    const res = await fetch('https://ai-copilot-backend.onrender.com/sessions/diff', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
