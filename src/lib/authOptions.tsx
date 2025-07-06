@@ -21,9 +21,16 @@ export const authOptions: AuthOptions = {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(credentials),
           });
-      
+          let data = await res.json();
+
+          console.log('🔐 Auth Login Response:', data);
+
+          if (!res.ok || !data.access_token) {
+            console.error('❌ Login failed', res.status, data);
+            return null;
+          }
           if (!res.ok) return null;
-          const data = await res.json();
+           data = await res.json();
           if (!data.access_token) return null;
       
           return {
