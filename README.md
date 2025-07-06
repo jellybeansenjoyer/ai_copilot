@@ -193,8 +193,12 @@ JWT_SECRET=
 
 **Raghav Kashyap** – Full-stack Engineer passionate about devtools & AI.
 
-Want to contribute or collaborate? [Email Me](mailto:raghav@example.com) or [LinkedIn](https://www.linkedin.com/in/raghavkashyap)
+Want to contribute or collaborate? [Email Me](mailto:raghavkash26@gmail.com) or [LinkedIn](https://www.linkedin.com/in/raghavkashyap26/)
 
 ---
 
+<<<<<<< Updated upstream
 > © 2025 AI Copilot for Devs. All rights reserved.
+=======
+> © Refactor. All rights reserved.
+>>>>>>> Stashed changes
