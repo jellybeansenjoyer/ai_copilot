@@ -1,4 +1,4 @@
-# AI Copilot for Devs
+# ReImage
 
 > Your personal AI assistant to refactor, optimize, and explain your code with one click. 
 
