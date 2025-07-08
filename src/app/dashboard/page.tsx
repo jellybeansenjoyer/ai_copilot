@@ -70,33 +70,33 @@ export default function DiffCheckerPage() {
 
   const handleDiffSubmit = async () => {
     if (!originalCode.trim() || !requirements.trim()) return;
-
+  
     setIsLoading(true);
     setUpdatedCode('');
     setDiffOutput([]);
-
+  
     try {
       const session = await getSession();
       if (!session?.accessToken) {
         alert('Session expired or unauthorized');
         return;
       }
-
+  
       const quotaRes = await fetch('https://ai-copilot-backend.onrender.com/user/profile', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${session.accessToken}`,
-        }
+        },
       });
-
+  
       const updatedUser = await quotaRes.json();
-
+  
       if (updatedUser.quota <= 0) {
         alert('Please recharge, you have exhausted your daily quota.');
         return;
       }
-
+  
       const res = await fetch('https://ai-copilot-backend.onrender.com/sessions/diff', {
         method: 'POST',
         headers: {
@@ -105,17 +105,42 @@ export default function DiffCheckerPage() {
         },
         body: JSON.stringify({ code: originalCode, requirements }),
       });
-
+  
       const data = await res.json();
       const cleanCode = data.updatedCode.replace(/```(\w+)?/g, '').trim();
+  
+      // 💾 Save the session to DB
+      await fetch('https://ai-copilot-backend.onrender.com/sessions/save', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.accessToken}`,
+        },
+        body: JSON.stringify({
+          codeInput: originalCode,
+          codeOutput: cleanCode,
+        }),
+      });
+  
+      // 🔁 Update state
       setUpdatedCode(cleanCode);
       setDiffOutput(diffLines(originalCode, cleanCode));
+  
+      // ✅ Refresh session history
+      const historyRes = await fetch('https://ai-copilot-backend.onrender.com/sessions/history', {
+        headers: {
+          Authorization: `Bearer ${session.accessToken}`,
+        },
+      });
+      const newHistory = await historyRes.json();
+      if (Array.isArray(newHistory)) setSessionHistory(newHistory);
     } catch (error: any) {
       alert(error.message.includes('quota') ? 'Insufficient quota. Please recharge.' : 'Failed to fetch diff.');
     } finally {
       setIsLoading(false);
     }
   };
+  
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
