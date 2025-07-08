@@ -83,12 +83,11 @@ export default function DiffCheckerPage() {
       }
 
       const quotaRes = await fetch('https://ai-copilot-backend.onrender.com/user/profile', {
-        method: 'PATCH',
+        method: 'GET',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${session.accessToken}`,
-        },
-        body: JSON.stringify({ quota: -1000 }),
+        }
       });
 
       const updatedUser = await quotaRes.json();
