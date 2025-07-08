@@ -42,7 +42,7 @@
 
 ## 🏗️ Architecture
 
-```mermaid
+
 graph TD
   A[Frontend - Next.js] -->|REST API| B[Backend - NestJS]
   B --> C[OpenAI GPT API]
@@ -50,7 +50,7 @@ graph TD
   A --> E[Auth - NextAuth.js]
   B --> E
   B -->|Quota Deduction| D
-```
+
 
 ---
 
@@ -195,10 +195,5 @@ JWT_SECRET=
 
 Want to contribute or collaborate? [Email Me](mailto:raghavkash26@gmail.com) or [LinkedIn](https://www.linkedin.com/in/raghavkashyap26/)
 
----
-
-<<<<<<< Updated upstream
-> © 2025 AI Copilot for Devs. All rights reserved.
-=======
 > © Refactor. All rights reserved.
 >>>>>>> Stashed changes
