@@ -16,6 +16,7 @@ export const authOptions: AuthOptions = {
           password: { label: 'Password', type: 'password' },
         },
         async authorize(credentials) {
+        console.log('🔐 Authorizing with credentials:', credentials);
           const res = await fetch(`${process.env.API_BASE_URL}/auth/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -26,11 +27,11 @@ export const authOptions: AuthOptions = {
           console.log('🔐 Auth Login Response:', data);
 
           if (!res.ok || !data.access_token) {
-            console.error('❌ Login failed', res.status, data);
             return null;
           }
           if (!res.ok) return null;
-           data = await res.json();
+        //    data = await res.json();
+        //    console.log('🔐 Auth Login Data:', data);
           if (!data.access_token) return null;
       
           return {
