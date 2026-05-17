@@ -11,8 +11,8 @@ Paste the same values you keep in `.env.production.example` (secrets only in Ver
 
 | Variable | Example value |
 |----------|----------------|
-| `NEXT_PUBLIC_API_BASE_URL` | `https://ai-copilot-backend.vercel.app` |
-| `API_BASE_URL` | `https://ai-copilot-backend.vercel.app` |
+| `NEXT_PUBLIC_API_BASE_URL` | `https://ai-copilot-backend.vercel.app` — **Nest API host only** (no `/api` suffix; using the Next URL breaks signup with CORS). |
+| `API_BASE_URL` | Same as `NEXT_PUBLIC_API_BASE_URL`. |
 | `NEXTAUTH_URL` | `https://reimage-three.vercel.app` |
 | `NEXTAUTH_SECRET` | Strong random string |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Google OAuth Web client |
@@ -28,4 +28,4 @@ Paste the same values you keep in `.env.production.example` (secrets only in Ver
 
 ## Backend CORS
 
-The API project must include `https://reimage-three.vercel.app` in `CORS_ORIGINS` (see the backend repo `docs/VERCEL.md`).
+The API project must include `https://reimage-three.vercel.app` in `CORS_ORIGINS`. For **preview** frontends (`*.vercel.app`), set `CORS_ALLOW_VERCEL_PREVIEW=true` on the API (see backend `docs/VERCEL.md`).
