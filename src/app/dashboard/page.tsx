@@ -6,23 +6,31 @@ import { useEffect, useRef, useState } from 'react';
 import { Menu, Loader2, Copy } from 'lucide-react';
 import Image from 'next/image';
 import { getSession } from 'next-auth/react';
-import { diffLines } from 'diff';
+import { diffLines, type Change } from 'diff';
 import dynamic from 'next/dynamic';
+import { getApiBaseUrl } from '@/lib/api';
+
+interface CodeSessionRecord {
+  id: string;
+  codeInput: string;
+  codeOutput: string;
+  createdAt: string;
+}
 
 const ProfileDialog = dynamic(() => import('@/components/ProfileDialog'), { ssr: false });
 
 export default function DiffCheckerPage() {
-  const { user, loading, signOut } = useAuth();
+  const { user, loading, signOut, signOutPending } = useAuth();
   const router = useRouter();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [originalCode, setOriginalCode] = useState('');
   const [requirements, setRequirements] = useState('');
   const [updatedCode, setUpdatedCode] = useState('');
-  const [diffOutput, setDiffOutput] = useState<any[]>([]);
+  const [diffOutput, setDiffOutput] = useState<Change[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [sessionsLoading, setSessionsLoading] = useState(false);
   const [showProfileDialog, setShowProfileDialog] = useState(false);
-  const [updatedPicture, setUpdatedPicture] = useState<string>('');
-  const [sessionHistory, setSessionHistory] = useState<any[]>([]);
+  const [sessionHistory, setSessionHistory] = useState<CodeSessionRecord[]>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const mainRef = useRef<HTMLDivElement>(null);
 
@@ -49,24 +57,29 @@ export default function DiffCheckerPage() {
       const session = await getSession();
       if (!session?.accessToken) return;
 
-      const res = await fetch('https://ai-copilot-backend.onrender.com/sessions/history', {
-        headers: {
-          Authorization: `Bearer ${session.accessToken}`,
-        },
-      });
+      setSessionsLoading(true);
+      try {
+        const res = await fetch(`${getApiBaseUrl()}/sessions/history`, {
+          headers: {
+            Authorization: `Bearer ${session.accessToken}`,
+          },
+        });
 
-      const data = await res.json();
+        const data = await res.json();
 
-      if (Array.isArray(data)) {
-        setSessionHistory(data);
-      } else {
-        console.error('Expected array but got:', data);
-        setSessionHistory([]);
+        if (Array.isArray(data)) {
+          setSessionHistory(data);
+        } else {
+          console.error('Expected array but got:', data);
+          setSessionHistory([]);
+        }
+      } finally {
+        setSessionsLoading(false);
       }
     };
 
-    if (user) fetchSessions();
-  }, [user]);
+    if (user?.id) void fetchSessions();
+  }, [user?.id]);
 
   const handleDiffSubmit = async () => {
     if (!originalCode.trim() || !requirements.trim()) return;
@@ -82,22 +95,27 @@ export default function DiffCheckerPage() {
         return;
       }
   
-      const quotaRes = await fetch('https://ai-copilot-backend.onrender.com/user/profile', {
+      const quotaRes = await fetch(`${getApiBaseUrl()}/user/profile`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${session.accessToken}`,
         },
       });
-  
+
+      if (!quotaRes.ok) {
+        alert('Could not verify quota.');
+        return;
+      }
+
       const updatedUser = await quotaRes.json();
-  
+
       if (updatedUser.quota <= 0) {
         alert('Please recharge, you have exhausted your daily quota.');
         return;
       }
-  
-      const res = await fetch('https://ai-copilot-backend.onrender.com/sessions/diff', {
+
+      const res = await fetch(`${getApiBaseUrl()}/sessions/diff`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -105,12 +123,26 @@ export default function DiffCheckerPage() {
         },
         body: JSON.stringify({ code: originalCode, requirements }),
       });
-  
+
+      if (res.status === 403) {
+        alert('Please recharge, you have exhausted your daily quota.');
+        return;
+      }
+
+      if (!res.ok) {
+        alert('Failed to generate diff.');
+        return;
+      }
+
       const data = await res.json();
+      if (!data?.updatedCode) {
+        alert('No updated code was returned.');
+        return;
+      }
+
       const cleanCode = data.updatedCode.replace(/```(\w+)?/g, '').trim();
-  
-      // 💾 Save the session to DB
-      await fetch('https://ai-copilot-backend.onrender.com/sessions/save', {
+
+      await fetch(`${getApiBaseUrl()}/sessions/save`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -127,15 +159,16 @@ export default function DiffCheckerPage() {
       setDiffOutput(diffLines(originalCode, cleanCode));
   
       // ✅ Refresh session history
-      const historyRes = await fetch('https://ai-copilot-backend.onrender.com/sessions/history', {
+      const historyRes = await fetch(`${getApiBaseUrl()}/sessions/history`, {
         headers: {
           Authorization: `Bearer ${session.accessToken}`,
         },
       });
       const newHistory = await historyRes.json();
       if (Array.isArray(newHistory)) setSessionHistory(newHistory);
-    } catch (error: any) {
-      alert(error.message.includes('quota') ? 'Insufficient quota. Please recharge.' : 'Failed to fetch diff.');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : '';
+      alert(message.includes('quota') ? 'Insufficient quota. Please recharge.' : 'Failed to fetch diff.');
     } finally {
       setIsLoading(false);
     }
@@ -148,8 +181,22 @@ export default function DiffCheckerPage() {
 
   const handleProfileClose = () => {
     setShowProfileDialog(false);
-    if (user?.picture) setUpdatedPicture(user.picture);
   };
+
+  if (loading) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-gray-100">
+        <div className="flex flex-col items-center gap-3 text-gray-600">
+          <Loader2 className="h-10 w-10 animate-spin text-blue-600" aria-hidden />
+          <p className="text-sm">Loading your workspace…</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
 
   return (
     <div className="relative w-full h-screen text-black overflow-hidden">
@@ -171,7 +218,14 @@ export default function DiffCheckerPage() {
       >
         <div className="p-4 font-bold text-xl border-b">Diff Sessions</div>
         <div className="p-4 space-y-2 overflow-y-auto h-[calc(100%-3rem)]">
-          {sessionHistory.map((s) => (
+          {sessionsLoading && (
+            <div className="flex flex-col items-center justify-center gap-2 py-8 text-gray-500">
+              <Loader2 className="h-8 w-8 animate-spin text-blue-600" aria-hidden />
+              <span className="text-sm">Loading sessions…</span>
+            </div>
+          )}
+          {!sessionsLoading &&
+            sessionHistory.map((s) => (
             <div
               key={s.id}
               onClick={() => {
@@ -204,7 +258,8 @@ export default function DiffCheckerPage() {
               className="cursor-pointer ring-2 ring-blue-500 rounded-full p-0.5 transition-transform hover:scale-105"
             >
               <Image
-                src={updatedPicture || user?.picture || '/default-avatar.png'}
+                key={user.picture ?? 'avatar'}
+                src={user.picture || '/default-avatar.png'}
                 alt="Profile"
                 width={40}
                 height={40}
@@ -213,10 +268,13 @@ export default function DiffCheckerPage() {
             </div>
 
             <button
-              onClick={signOut}
-              className="text-sm px-4 py-2 border border-white text-red-600 rounded hover:bg-red-600 hover:text-white transition-colors"
+              type="button"
+              onClick={() => void signOut()}
+              disabled={signOutPending}
+              className="text-sm px-4 py-2 border border-white text-red-600 rounded hover:bg-red-600 hover:text-white transition-colors disabled:opacity-60 inline-flex items-center gap-2"
             >
-              Sign Out
+              {signOutPending && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
+              {signOutPending ? 'Signing out…' : 'Sign Out'}
             </button>
           </div>
         </div>
@@ -233,7 +291,8 @@ export default function DiffCheckerPage() {
                 rows={10}
                 value={originalCode}
                 onChange={(e) => setOriginalCode(e.target.value)}
-                className="w-full p-3 text-sm font-mono bg-gray-100 rounded-md border"
+                disabled={isLoading}
+                className="w-full p-3 text-sm font-mono bg-gray-100 rounded-md border disabled:opacity-60"
               />
               <button
                 onClick={() => copyToClipboard(originalCode)}
@@ -249,17 +308,20 @@ export default function DiffCheckerPage() {
                 rows={10}
                 value={requirements}
                 onChange={(e) => setRequirements(e.target.value)}
-                className="w-full p-3 text-sm bg-gray-100 rounded-md border"
+                disabled={isLoading}
+                className="w-full p-3 text-sm bg-gray-100 rounded-md border disabled:opacity-60"
               />
             </div>
           </div>
 
           <button
-            onClick={handleDiffSubmit}
+            type="button"
+            onClick={() => void handleDiffSubmit()}
             disabled={isLoading}
-            className="self-center bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md mt-4 disabled:opacity-50"
+            className="self-center inline-flex items-center justify-center gap-2 min-w-[180px] bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md mt-4 disabled:opacity-50"
           >
-            {isLoading ? <Loader2 className="animate-spin" /> : 'Generate Diff'}
+            {isLoading && <Loader2 className="h-5 w-5 animate-spin" aria-hidden />}
+            {isLoading ? 'Generating…' : 'Generate Diff'}
           </button>
 
           {diffOutput.length > 0 && (

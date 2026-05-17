@@ -1,19 +1,44 @@
-// components/GoogleOAuthButton.tsx
 'use client';
 
+import { useState } from 'react';
 import { signIn } from 'next-auth/react';
 import { FcGoogle } from 'react-icons/fc';
+import { Loader2 } from 'lucide-react';
 import { Button } from './ui/button';
 
-export const GoogleOAuthButton = () => {
+type Props = {
+  /** Disable while parent form is submitting */
+  disabled?: boolean;
+};
+
+export const GoogleOAuthButton = ({ disabled = false }: Props) => {
+  const [pending, setPending] = useState(false);
+
+  const handleClick = async () => {
+    setPending(true);
+    try {
+      await signIn('google', { callbackUrl: '/dashboard' });
+    } finally {
+      setPending(false);
+    }
+  };
+
+  const busy = pending || disabled;
+
   return (
     <Button
+      type="button"
       variant="outline"
-      onClick={() => signIn('google',{ callbackUrl: '/dashboard' })}
+      onClick={handleClick}
+      disabled={busy}
       className="w-full flex items-center justify-center gap-2 border rounded-lg"
     >
-      <FcGoogle className="text-xl" />
-      Continue with Google
+      {pending ? (
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" aria-hidden />
+      ) : (
+        <FcGoogle className="text-xl" />
+      )}
+      {pending ? 'Connecting…' : 'Continue with Google'}
     </Button>
   );
 };

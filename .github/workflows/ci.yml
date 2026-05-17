@@ -1,0 +1,28 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - name: Production build
+        env:
+          NEXT_PUBLIC_API_BASE_URL: https://ai-copilot-backend.vercel.app
+          API_BASE_URL: https://ai-copilot-backend.vercel.app
+          NEXTAUTH_URL: https://reimage-three.vercel.app
+          NEXTAUTH_SECRET: ci-placeholder-secret-at-least-32-characters-long
+          GOOGLE_CLIENT_ID: ci-placeholder.apps.googleusercontent.com
+          GOOGLE_CLIENT_SECRET: ci-placeholder
+        run: npm run build

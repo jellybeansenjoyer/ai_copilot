@@ -12,11 +12,14 @@ import { z } from 'zod';
 import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { Loader2 } from 'lucide-react';
 
 const formSchema = z.object({
   email: z.string().email(),
   password: z.string().min(6),
 });
+
+type SignInForm = z.infer<typeof formSchema>;
 
 export default function SignInPage() {
   const { register, handleSubmit, formState: { errors } } = useForm({
@@ -26,21 +29,22 @@ export default function SignInPage() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  const onSubmit = async (data: any) => {
+  const onSubmit = async (data: SignInForm) => {
     setLoading(true);
-    const res = await signIn('credentials', {
-      redirect: false,
-      ...data,
-    });
+    try {
+      const res = await signIn('credentials', {
+        redirect: false,
+        ...data,
+      });
 
-    if (res?.ok){
-      router.push('/dashboard');
-      console.log('Authentication successful:', res);
-    } 
-    else console.log('Authentication failed:', res?.error);
-    // else alert('Authentication failed');
-
-    setLoading(false);
+      if (res?.ok) {
+        router.push('/dashboard');
+      } else {
+        alert('Authentication failed');
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -60,7 +64,7 @@ export default function SignInPage() {
           <h1 className="text-3xl font-bold mb-2">Welcome Back</h1>
           <p className="text-gray-500 mb-6">Please enter your details</p>
 
-          <GoogleOAuthButton />
+          <GoogleOAuthButton disabled={loading} />
 
           {/* Divider */}
           <div className="flex items-center my-6">
@@ -73,20 +77,31 @@ export default function SignInPage() {
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div>
               <label className="block mb-1 text-sm font-medium">Email</label>
-              <Input placeholder="Enter your email" className="rounded-lg" {...register('email')} />
+              <Input
+                placeholder="Enter your email"
+                className="rounded-lg"
+                disabled={loading}
+                {...register('email')}
+              />
               {errors.email && <p className="text-red-500 text-sm">{errors.email.message}</p>}
             </div>
 
             <div>
               <label className="block mb-1 text-sm font-medium">Password</label>
-              <Input type="password" placeholder="••••••••" className="rounded-lg" {...register('password')} />
+              <Input
+                type="password"
+                placeholder="••••••••"
+                className="rounded-lg"
+                disabled={loading}
+                {...register('password')}
+              />
               {errors.password && <p className="text-red-500 text-sm">{errors.password.message}</p>}
             </div>
 
             {/* Remember Me + Forgot */}
             <div className="flex justify-between items-center text-sm">
               <label className="flex items-center gap-2">
-                <Checkbox id="remember" />
+                <Checkbox id="remember" disabled={loading} />
                 <span>Remember me</span>
               </label>
               <Link href="#" className="text-[#8a7cc7]">Forgot password?</Link>
@@ -95,10 +110,11 @@ export default function SignInPage() {
             {/* Submit Button */}
             <Button
               type="submit"
-              className="w-full bg-[#8a7cc7] hover:bg-[#7a6bb6] text-white rounded-lg"
+              className="w-full gap-2 bg-[#8a7cc7] hover:bg-[#7a6bb6] text-white rounded-lg inline-flex items-center justify-center"
               disabled={loading}
             >
-              {loading ? 'Logging in...' : 'Log in'}
+              {loading && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
+              {loading ? 'Logging in…' : 'Log in'}
             </Button>
 
             {/* Redirect Link */}

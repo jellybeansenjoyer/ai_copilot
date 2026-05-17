@@ -54,16 +54,11 @@ graph TD
 
 ---
 
-## 📁 Folder Structure (Monorepo)
+## 📁 Folder Structure (this workspace)
 
 ```bash
-ai-copilot-monorepo/
-├── apps/
-│   ├── webapp/              # Next.js frontend
-│   └── backend/             # NestJS backend
-├── prisma/                  # DB schema
-├── .env                     # Environment config
-├── docker-compose.yml       # (optional for local dev)
+ai_copilot/                    # Next.js frontend (this package)
+ai_copilot_backend/            # NestJS API + Prisma schema
 ```
 
 ---
@@ -143,38 +138,58 @@ model Session {
 }
 ```
 
----
-
 ## 🧪 Environment Variables
 
+During `next dev`, the app calls the API via **`/nest/...`** (Next.js rewrites to your Nest server) so the browser does not hit cross-origin CORS. Ensure the API is listening on **`http://127.0.0.1:2999`** (default) or set **`BACKEND_PROXY_TARGET`** in the environment used when starting Next.
+
 ```
-# Frontend
+# Frontend (ai_copilot/)
 NEXTAUTH_SECRET=
 NEXTAUTH_URL=
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
-API_BASE_URL=http://localhost:2999
+NEXT_PUBLIC_API_BASE_URL=http://localhost:2999
+# Optional: server-only override for NextAuth route handlers
+# API_BASE_URL=http://localhost:2999
+# Optional: if Nest runs on another host/port during `next dev`, set rewrite target (default 127.0.0.1:2999)
+# BACKEND_PROXY_TARGET=http://127.0.0.1:2999
+NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=
+NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET=
 
-# Backend
-OPENAI_API_KEY=
+# Backend (ai_copilot_backend/) — see ai_copilot_backend/docs/LLM_SETUP.md
+# LLM: set ONE of the following (or LLM_PROVIDER to force)
+# GROQ_API_KEY=
+# GROQ_MODEL=llama-3.3-70b-versatile
+# GEMINI_API_KEY=
+# GEMINI_MODEL=gemini-2.0-flash
+# OPENAI_API_KEY=
+# OPENAI_MODEL=gpt-4o-mini
+# LLM_PROVIDER=groq
 DATABASE_URL=
 JWT_SECRET=
+JWT_EXPIRES_IN=7d
+PORT=2999
+CORS_ORIGINS=http://localhost:3000,https://your-frontend.example
+# Optional single-origin alias for CORS
+# FRONTEND_URL=http://localhost:3000
+GOOGLE_CLIENT_ID=
 ```
 
 ---
 
 ## 🚀 Deployment
 
+- **Vercel (this app + API repo):** [`docs/VERCEL.md`](./docs/VERCEL.md)  
+- **API repo (Nest + Neon):** [`https://github.com/jellybeansenjoyer/ai_copilot_backend`](https://github.com/jellybeansenjoyer/ai_copilot_backend) — see its `docs/VERCEL.md` for `DATABASE_URL`, `CORS_ORIGINS`, and migrations.
+
 ### 🧩 Frontend (Vercel)
 
-- Push to GitHub
-- Connect to Vercel → Set env vars → Deploy
+- This repository is the Next.js root (no extra “Root Directory” subfolder).
+- Copy [`./.env.example`](./.env.example) / [`.env.production.example`](./.env.production.example) into Vercel env, then deploy.
 
-### 🧩 Backend (Fly.io / Render)
+### 🧩 Backend
 
-- `flyctl launch` or deploy via Render Docker image
-- Connect PostgreSQL from Neon/Supabase
-- Expose port 2999
+- Deployed separately from the `ai_copilot_backend` repository (Docker / Vercel serverless per that repo’s README and `docs/VERCEL.md`).
 
 ---
 
@@ -196,4 +211,3 @@ JWT_SECRET=
 Want to contribute or collaborate? [Email Me](mailto:raghavkash26@gmail.com) or [LinkedIn](https://www.linkedin.com/in/raghavkashyap26/)
 
 > © Refactor. All rights reserved.
->>>>>>> Stashed changes
