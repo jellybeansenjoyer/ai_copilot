@@ -21,6 +21,8 @@ Paste the same values you keep in `.env.production.example` (secrets only in Ver
 
 `NEXT_PUBLIC_*` are inlined at **build** time — change them → **Redeploy**.
 
+If `NEXT_PUBLIC_API_BASE_URL` is accidentally set to another `*.vercel.app` URL (often a preview deployment or the Next app), the client still calls the wrong host and you see CORS on `/api/auth/...`. The app **detects that at runtime** on `reimage-three.vercel.app` (and when the API host equals the page host on Vercel) and **falls back** to `https://ai-copilot-backend.vercel.app` unless you set `NEXT_PUBLIC_DISABLE_NEST_ORIGIN_GUARD=true`. You should still set the env vars correctly in Vercel.
+
 ## Google Cloud Console
 
 - **Authorized JavaScript origins:** `https://reimage-three.vercel.app`
